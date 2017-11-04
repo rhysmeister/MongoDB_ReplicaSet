@@ -1,2 +1,30 @@
 ---
 # tasks file for MongoDB_ReplicaSet
+  - name: Add repository
+    yum_repository:
+      name: mongodb-org-3.4
+      description: Official MongoDB 3.4 yum repo
+      baseurl: https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/3.4/x86_64/
+      gpgcheck: 1
+      gpgkey: https://www.mongodb.org/static/pgp/server-3.4.asc
+
+  - name: Install MongoDB packages on the shard servers
+    yum:
+      name: ["mongodb-org-server",
+             "mongodb-org-shell",
+             "mongodb-org-tools"]
+      enablerepo: "mongodb-org-3.4"
+      state: "installed"
+
+  - name: Ensure files and directories are owned by mongod
+    file:
+      path: ["/var/log/mongodb/", "/var/lib/mongo", "/var/run/mongodb/mongod.pid"]
+      owner: "mongod"
+      group: "mongod"
+      recurse: "yes"
+
+  - name: Ensure mongod service is running
+    service:
+      name: "mongod"
+      state: "started"
+      enabled: yes
