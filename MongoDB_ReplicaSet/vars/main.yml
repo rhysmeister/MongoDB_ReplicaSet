@@ -2,6 +2,8 @@
 # vars file for MongoDB_ReplicaSet
   ansible_managed: "This file is managed by ansible"
   ansible_managed_hosts_file: True
+  additional_packages: [ "python-pip" ]
+  additional_python_packages: [ "pymongo" ]
   mongodb_replicaset_setup_script: "/home/vagrant/rs.js"
   mongodb_replicaset_name: "replset"
   mongodb_log_path: "/var/log/mongodb/mongod.log"
@@ -10,3 +12,25 @@
   mongodb_bindIp: "0.0.0.0"
   mongodb_port: 27017
   mongodb_journal_enabled: "true"
+  mongodb_admin_user: admin
+  mongodb_admin_password: "BigSecret"
+  mongodb_user_dict_list: [
+              {
+                  db: "db1",
+                  name: "ro_user",
+                  password: "secretro",
+                  roles: "read"
+              },
+                {
+                    db: "db1",
+                    name: "rw_user",
+                    password: "secretrw",
+                    roles: "readWrite"
+                },
+                {
+                      db: "db1",
+                      name: "admin_user",
+                      password: "secretadmin",
+                      roles: "readWrite,dbAdmin,userAdmin"
+                  },
+  ]

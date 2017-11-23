@@ -16,6 +16,16 @@
       enablerepo: "mongodb-org-3.4"
       state: "installed"
 
+  - name: Install additional packages
+    yum:
+      name: "{{ additional_packages }}"
+      state: installed
+
+  - name: Install additional python packages
+    pip:
+      name: "{{ additional_python_packages }}"
+      state: present
+
   - name: Ensure files and directories are owned by mongod
     file:
       path: ["/var/log/mongodb/", "/var/lib/mongo", "/var/run/mongodb/mongod.pid"]
@@ -64,3 +74,27 @@
 
   - debug:
       var: rs
+
+  - name: Create MongoDB admin user
+    mongodb_user:
+      database: admin
+      name: "{{ mongodb_admin_user }}"
+      password: "{{ mongodb_admin_password }}"
+      roles: ["root"]
+      state: present
+    run_once: true
+
+  - name: Create MongoDB application users
+    mongodb_user:
+      login_user: "{{ mongodb_admin_user }}"
+      login_password: "{{ mongodb_admin_password }}"
+      database: "{{ item['db'] }}"
+      name: "{{ item['name'] }}"
+      password: "{{ item['password'] }}"
+      roles: "{{ item['roles'] }}"
+      state: present
+    with_items:
+      - "{{ mongodb_user_dict_list }}"
+    run_once: true
+
+    
