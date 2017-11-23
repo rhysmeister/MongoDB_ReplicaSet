@@ -14,7 +14,7 @@ Vagrant.configure("2") do |config|
       if mongod == MONGOD_HOSTS
         mongod_node.vm.provision :ansible do |ansible|
           ansible.groups = {
-            "mongod" => ["mongod1","mongod2","mongod3"],
+            "mongod" => ["mongod-node1","mongod-node2","mongod-node3"],
           }
           ansible.limit = "all" # Connect to all machines
           ansible.playbook = "mongodb.yaml"

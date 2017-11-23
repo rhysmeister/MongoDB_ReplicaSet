@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+
+systemLog:
+  destination: file
+  logAppend: true
+  path: {{ mongodb_log_path }}
+
+storage:
+  dbPath: {{ mongodb_dbPath }}
+  journal:
+    enabled: {{ mongodb_journal_enabled }}
+
+processManagement:
+  fork: true  # fork and run in background
+  pidFilePath: {{ mongodb_pidFilePath }}
+
+net:
+  bindIp: {{ mongodb_bindIp }}
+  port: {{ mongodb_port }}
+
+replication:
+  replSetName: {{ mongodb_replicaset_name }}

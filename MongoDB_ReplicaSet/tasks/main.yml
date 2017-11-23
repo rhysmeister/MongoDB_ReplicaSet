@@ -23,8 +23,44 @@
       group: "mongod"
       recurse: "yes"
 
+  - name: Generate /etc/hosts file
+    template:
+      src: templates/hosts.j2
+      dest: /etc/hosts
+    when: ansible_managed_hosts_file == True
+
+  - name: Copy mongod config file to hosts
+    template:
+      src: templates/mongod.conf.j2
+      dest: /etc/mongod.conf
+      backup: yes
+      owner: mongod
+      group: mongod
+      mode: 0644
+
   - name: Ensure mongod service is running
     service:
       name: "mongod"
       state: "started"
       enabled: yes
+
+  - name: Give mongod daemon a little time
+    pause:
+      seconds: 30
+
+  - name: Copy RS Setup Script to lead node of each shard
+    template:
+      src: templates/rs_init.j2
+      dest: "{{ mongodb_replicaset_setup_script }}"
+    when: groups.mongod.index(inventory_hostname) == 0
+    #with_items: groups.mongod # groups['groupname'] is a hash, must use groups.groupname for a list
+
+  - name: Execute rs Setup Script on each lead node_name
+    shell: mongo {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
+    args:
+      creates: ~/rs.success
+    register: rs
+    when: groups.mongod.index(inventory_hostname) == 0
+
+  - debug:
+      var: rs

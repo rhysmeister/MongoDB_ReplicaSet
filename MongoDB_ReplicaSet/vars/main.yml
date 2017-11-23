@@ -1,2 +1,12 @@
 ---
 # vars file for MongoDB_ReplicaSet
+  ansible_managed: "This file is managed by ansible"
+  ansible_managed_hosts_file: True
+  mongodb_replicaset_setup_script: "/home/vagrant/rs.js"
+  mongodb_replicaset_name: "replset"
+  mongodb_log_path: "/var/log/mongodb/mongod.log"
+  mongodb_dbPath: "/var/lib/mongo"
+  mongodb_pidFilePath: /var/run/mongodb/mongod.pid
+  mongodb_bindIp: "0.0.0.0"
+  mongodb_port: 27017
+  mongodb_journal_enabled: "true"

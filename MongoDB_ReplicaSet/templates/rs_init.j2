@@ -1,0 +1,16 @@
+// Ansible managed
+rs.initiate();
+while(rs.status()['myState'] != 1) {
+     print("State is not yet PRIMARY. Waiting...");
+     sleep(10000);
+}
+rs.add("{{ groups.mongod[1] }}:27017");
+rs.add("{{ groups.mongod[2] }}:27017");
+sleep(10000);
+var doc = rs.status();
+if(doc['members'].length == 3) {
+   quit(0);
+}
+else {
+   quit(1);
+}
