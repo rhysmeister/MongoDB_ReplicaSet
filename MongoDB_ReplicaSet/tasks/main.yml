@@ -53,10 +53,12 @@
       name: "mongod"
       state: "started"
       enabled: yes
+    register: mongo
 
   - name: Give mongod daemon a little time
     pause:
       seconds: 30
+    when: mongo.changed == True
 
   - name: Copy RS Setup Script to lead node of each shard
     template:
@@ -97,4 +99,17 @@
       - "{{ mongodb_user_dict_list }}"
     run_once: true
 
-    
+  - name: Generate 8192 bit private key for x509
+    shell: "openssl genrsa -out {{ mongoCA_key_file }} -passout pass:{{ mongo_certificate_x509_passphrase }} -aes256 8192 && cat {{ mongoCA_key_file }}"
+    args:
+      creates: "{{ mongoCA_key_file }}"
+    register: mongoCA
+    run_once: true
+
+  - name: Copy certificate to host
+    blockinfile:
+      block: |
+        {{ mongoCA.stdout }}
+      dest: "{{ mongoCA_key_file }}"
+      force: no
+    when: mongoCA.changed == True
