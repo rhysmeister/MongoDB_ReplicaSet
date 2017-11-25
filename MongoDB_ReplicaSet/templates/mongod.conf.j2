@@ -13,10 +13,3 @@ storage:
 processManagement:
   fork: true  # fork and run in background
   pidFilePath: {{ mongodb_pidFilePath }}
-
-net:
-  bindIp: {{ mongodb_bindIp }}
-  port: {{ mongodb_port }}
-
-replication:
-  replSetName: {{ mongodb_replicaset_name }}

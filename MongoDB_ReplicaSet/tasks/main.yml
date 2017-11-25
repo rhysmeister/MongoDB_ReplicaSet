@@ -48,57 +48,6 @@
       group: mongod
       mode: 0644
 
-  - name: Ensure mongod service is running
-    service:
-      name: "mongod"
-      state: "started"
-      enabled: yes
-    register: mongo
-
-  - name: Give mongod daemon a little time
-    pause:
-      seconds: 30
-    when: mongo.changed == True
-
-  - name: Copy RS Setup Script to lead node of each shard
-    template:
-      src: templates/rs_init.j2
-      dest: "{{ mongodb_replicaset_setup_script }}"
-    when: groups.mongod.index(inventory_hostname) == 0
-    #with_items: groups.mongod # groups['groupname'] is a hash, must use groups.groupname for a list
-
-  - name: Execute rs Setup Script on each lead node_name
-    shell: mongo {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
-    args:
-      creates: ~/rs.success
-    register: rs
-    when: groups.mongod.index(inventory_hostname) == 0
-
-  - debug:
-      var: rs
-
-  - name: Create MongoDB admin user
-    mongodb_user:
-      database: admin
-      name: "{{ mongodb_admin_user }}"
-      password: "{{ mongodb_admin_password }}"
-      roles: ["root"]
-      state: present
-    run_once: true
-
-  - name: Create MongoDB application users
-    mongodb_user:
-      login_user: "{{ mongodb_admin_user }}"
-      login_password: "{{ mongodb_admin_password }}"
-      database: "{{ item['db'] }}"
-      name: "{{ item['name'] }}"
-      password: "{{ item['password'] }}"
-      roles: "{{ item['roles'] }}"
-      state: present
-    with_items:
-      - "{{ mongodb_user_dict_list }}"
-    run_once: true
-
   - name: Generate 8192 bit private key for x509
     shell: "openssl genrsa -out {{ mongoCA_key_file }} -passout pass:{{ mongo_certificate_x509_passphrase }} -aes256 8192 && cat {{ mongoCA_key_file }}"
     args:
@@ -112,10 +61,11 @@
         {{ mongoCA.stdout }}
       dest: "{{ mongoCA_key_file }}"
       force: no
+      create: yes
     when: mongoCA.changed == True
 
   - name: Sign a new CA certificate
-    shell: "openssl req -x509 -new -extensions v3_ca -key {{ mongoCA_key_file | quote }} -days {{ mongoCA_certificate_days }} -subj {{ mongoCA_openssl_subject | quote }} -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out $(hostname).crt"
+    shell: "openssl req -x509 -new -extensions v3_ca -key {{ mongoCA_key_file | quote }} -days {{ mongoCA_certificate_days }} -subj {{ mongoCA_openssl_subject | quote }} -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out mongoCA.crt"
     when: mongoCA.changed == True
 
   - name: Step 1 - Issue Certificates for each of the MongoDB Instances
@@ -123,9 +73,92 @@
     when: mongoCA.changed == True
 
   - name: Step 2 - Issue Certificates for each of the MongoDB Instances
-    shell: "openssl x509 -CA $(hostname).crt -CAkey {{ mongoCA_key_file | quote }} -CAcreateserial  -req -days {{ mongoCA_certificate_days | int }} -in $(hostname).csr -out $(hostname).crt"
+    shell: "openssl x509 -CA mongoCA.crt -CAkey {{ mongoCA_key_file | quote }} -CAcreateserial  -req -days {{ mongoCA_certificate_days | int }} -in $(hostname).csr -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out $(hostname).crt"
     when: mongoCA.changed == True
 
   - name: Step 3 - Issue Certificates for each of the MongoDB Instances
     shell: "cat $(hostname).key $(hostname).crt > $(hostname).pem"
     when: mongoCA.changed == True
+
+  - name: Create folder for Certificates
+    file:
+      path: /etc/mongodb/ssl
+      state: directory
+      owner: mongod
+      group: mongod
+      mode: 0700
+
+  - name: Copy mongoCA.crt and $(hostname).pem to /etc/mongodb/ssl
+    copy:
+      src: "{{ item }}"
+      remote_src: true
+      dest: /etc/mongodb/ssl
+      owner: mongod
+      group: mongod
+      mode: 0700
+    with_items:
+      - /home/vagrant/mongoCA.crt
+      - "/home/vagrant/{{ ansible_hostname }}.pem"
+
+  - name: Ensure mongod service is running
+    service:
+      name: "mongod"
+      state: "started"
+      enabled: yes
+    register: mongo
+
+  - name: Give mongod daemon a little time
+    pause:
+      seconds: 30
+    when: mongo.changed == True
+
+  - name: Create MongoDB admin user on each node
+    mongodb_user:
+      database: admin
+      name: "{{ mongodb_admin_user }}"
+      password: "{{ mongodb_admin_password }}"
+      roles: ["root"]
+      state: present
+
+  - name: Append x509 and repl stuff to mongod.conf
+    blockinfile:
+      path: /etc/mongod.conf
+      block: "{{ lookup('template', 'mongod_ssl_x509.conf.j2') }}"
+    register: mongod_conf
+
+  - name: Restart mongod
+    service:
+      name: mongod
+      state: restarted
+    when: mongod_conf.changed == True
+
+  - name: Copy RS Setup Script to lead node of each shard
+    template:
+      src: templates/rs_init.j2
+      dest: "{{ mongodb_replicaset_setup_script }}"
+    when: groups.mongod.index(inventory_hostname) == 0
+    #with_items: groups.mongod # groups['groupname'] is a hash, must use groups.groupname for a list
+
+  - name: Execute rs Setup Script on each lead node_name
+    shell: mongo admin -u {{ mongodb_admin_user }} -p {{ mongodb_admin_password }} {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
+    #shell: mongo {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
+    args:
+      creates: ~/rs.success
+    register: rs
+    when: groups.mongod.index(inventory_hostname) == 0
+
+  - debug:
+      var: rs
+
+  - name: Create MongoDB application users
+    mongodb_user:
+      login_user: "{{ mongodb_admin_user }}"
+      login_password: "{{ mongodb_admin_password }}"
+      database: "{{ item['db'] }}"
+      name: "{{ item['name'] }}"
+      password: "{{ item['password'] }}"
+      roles: "{{ item['roles'] }}"
+      state: present
+    with_items:
+      - "{{ mongodb_user_dict_list }}"
+    run_once: true
