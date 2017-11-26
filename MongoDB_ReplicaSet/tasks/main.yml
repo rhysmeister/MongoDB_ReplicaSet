@@ -49,31 +49,44 @@
       mode: 0644
 
   - name: Generate 8192 bit private key for x509
-    shell: "openssl genrsa -out {{ mongoCA_key_file }} -passout pass:{{ mongo_certificate_x509_passphrase }} -aes256 8192 && cat {{ mongoCA_key_file }}"
+    shell: "openssl genrsa -out {{ mongoCA_key_file }} -passout pass:{{ mongo_certificate_x509_passphrase }} -aes256 8192"
     args:
       creates: "{{ mongoCA_key_file }}"
     register: mongoCA
     run_once: true
 
-  - name: Copy certificate to host
-    blockinfile:
-      block: |
-        {{ mongoCA.stdout }}
-      dest: "{{ mongoCA_key_file }}"
-      force: no
-      create: yes
-    when: mongoCA.changed == True
-
   - name: Sign a new CA certificate
-    shell: "openssl req -x509 -new -extensions v3_ca -key {{ mongoCA_key_file | quote }} -days {{ mongoCA_certificate_days }} -subj {{ mongoCA_openssl_subject | quote }} -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out mongoCA.crt"
+    shell: "openssl req -x509 -new -extensions v3_ca -key {{ mongoCA_key_file | quote }} -days {{ mongoCA_certificate_days }} -subj {{ mongoCA_openssl_subject_CA_cert | quote }} -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out mongoCA.crt"
     when: mongoCA.changed == True
+    run_once: true
+
+  - name: Get certifcate generate CA certifcate & key from first host
+    fetch:
+      src: "/home/vagrant/{{ item }}"
+      dest: /tmp
+    with_items:
+      - mongoCA.crt
+      - mongoCA.key
+
+  - name: Copy certificate & key to other hosts
+    copy:
+      src: "/tmp/{{ play_hosts | first }}/home/vagrant/{{ item }}"
+      dest: /home/vagrant
+    with_items:
+      - mongoCA.crt
+      - mongoCA.key
+
+  - name: Delete local copy of file
+    local_action: file path="/tmp/{{ ansible_hostname }}" state=absent
+    run_once: true
+    become: false
 
   - name: Step 1 - Issue Certificates for each of the MongoDB Instances
-    shell: "openssl req -new -nodes -newkey rsa:4096 -keyout $(hostname).key -out $(hostname).csr -subj {{ mongoCA_openssl_subject | quote }}"
+    shell: "openssl req -new -nodes -newkey rsa:4096 -keyout $(hostname).key -out $(hostname).csr -subj {{ mongoCA_openssl_subject_host_cert | quote }}"
     when: mongoCA.changed == True
 
   - name: Step 2 - Issue Certificates for each of the MongoDB Instances
-    shell: "openssl x509 -CA mongoCA.crt -CAkey {{ mongoCA_key_file | quote }} -CAcreateserial  -req -days {{ mongoCA_certificate_days | int }} -in $(hostname).csr -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out $(hostname).crt"
+    shell: "openssl x509 -CA /home/vagrant/mongoCA.crt -CAkey {{ mongoCA_key_file | quote }} -CAcreateserial  -req -days {{ mongoCA_certificate_days | int }} -in $(hostname).csr -passin pass:{{ mongo_certificate_x509_passphrase | quote }} -out $(hostname).crt"
     when: mongoCA.changed == True
 
   - name: Step 3 - Issue Certificates for each of the MongoDB Instances

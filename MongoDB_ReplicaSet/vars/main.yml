@@ -16,7 +16,8 @@
   mongodb_admin_password: "BigSecret"
   mongo_certificate_x509_passphrase: "EvenBiggerSecret"
   mongoCA_key_file: "/home/vagrant/mongoCA.key"
-  mongoCA_openssl_subject: "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
+  mongoCA_openssl_subject_CA_cert: "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
+  mongoCA_openssl_subject_host_cert: "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN={{ ansible_hostname }}"
   mongoCA_certificate_days: 36500
   mongodb_user_dict_list: [
               {
