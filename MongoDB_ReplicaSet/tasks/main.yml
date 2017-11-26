@@ -132,6 +132,15 @@
       password: "{{ mongodb_admin_password }}"
       roles: ["root"]
       state: present
+    register: mongo_admin_user
+    ignore_errors: yes
+    failed_when:
+      - "mongo_admin_user.failed is defined"
+      - "mongo_admin_user.failed == True"
+      - "'not authorized on admin to execute command' not in mongo_admin_user.msg"
+
+  - debug:
+      var: mongo_admin_user
 
   - name: Append x509 and repl stuff to mongod.conf
     blockinfile:
@@ -171,6 +180,7 @@
       name: "{{ item['name'] }}"
       password: "{{ item['password'] }}"
       roles: "{{ item['roles'] }}"
+      replica_set: "{{ mongodb_replicaset_name }}"
       state: present
     with_items:
       - "{{ mongodb_user_dict_list }}"
