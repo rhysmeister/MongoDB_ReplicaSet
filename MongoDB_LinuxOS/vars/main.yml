@@ -2,3 +2,4 @@
 # vars file for MongoDB_LinuxOS
 mongodb_ports: [ 27017 ]
 mongodb_selinux_enabled: True
+swappiness: 0
