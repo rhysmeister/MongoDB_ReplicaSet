@@ -1,0 +1,26 @@
+---
+# tasks file for MongoDB_LinuxOS
+  - name: Ensure SELinux Port for MongoDB is set
+    seport:
+      ports: "{{ item }}"
+      proto: tcp
+      setype: mongod_port_t
+      state: present
+    with_items: mongodb_ports
+    when: mongodb_selinux_enabled == True
+
+  - name: Disable selinux if config requests
+    selinux:
+      state: disabled
+    when: mongodb_selinux_enabled == False
+
+  - name: Ensure ntpd is installed
+    yum:
+      name: ntpd
+      state: installed
+
+  - name: Ensure ntpd is started & on
+    service:
+      name: ntpd
+      state: started
+      enabled: yes
