@@ -2,4 +2,7 @@
     - hosts: all
       gather_facts: yes
       become: yes
-      roles: ["MongoDB_ReplicaSet"]
+      roles: [
+                "MongoDB_LinuxOS",
+                "MongoDB_ReplicaSet"
+              ]
