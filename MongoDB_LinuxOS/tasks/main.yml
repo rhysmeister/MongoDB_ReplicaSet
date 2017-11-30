@@ -1,8 +1,14 @@
 ---
 # tasks file for MongoDB_LinuxOS
+  - name: Install additional additional packages
+    yum:
+      name: "{{ item }}"
+      state: present
+    with_items: "{{ additional_packages }}"
+
   - name: Ensure SELinux Port for MongoDB is set
     seport:
-      ports: "{{ item }}"
+      ports: "{{ item|int}}"
       proto: tcp
       setype: mongod_port_t
       state: present
@@ -32,18 +38,33 @@
       value: "{{ swappiness }}"
       state: present
 
-  - name: Disable transparent hugpages
-    debug:
-      msg: "No implemented yet"
+  - name: Disable transparent hugepages in runing system
+    shell: echo "never" > "{{ item }}"
+    with_items:
+      - /sys/kernel/mm/transparent_hugepage/enabled
+      - /sys/kernel/mm/transparent_hugepage/defrag
+
+  - name: Disbale transparent hugepages in grub.conf
+    lineinfile:
+      path: /boot/grub2/grub.cfg
+      regexp: "^transparent_hugepage"
+      line: "transparent_hugepage=never"
+
+  - name: Ensure NUMA zone reclaim is disabled
+    sysctl:
+      name: vm.zone_reclaim_mode
+      value: 0
+      state: present
+      reload: yes
 
   - name: Ensure process limits are set
     template:
       src: templates/99-mongodb-nproc.conf.j2
       dest: /etc/security/limits.d/99-mongodb-nproc.conf
 
-  - name: Ensure ntpd is installed
+  - name: Ensure ntp is installed
     yum:
-      name: ntpd
+      name: ntp
       state: installed
 
   - name: Ensure ntpd is started & on

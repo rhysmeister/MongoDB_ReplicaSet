@@ -3,3 +3,6 @@
 mongodb_ports: [ 27017 ]
 mongodb_selinux_enabled: True
 swappiness: 0
+additional_packages: [
+  "policycoreutils-python"
+]
