@@ -125,13 +125,29 @@
       seconds: 30
     when: mongo.changed == True
 
+  - name: Ensure replicaset exists
+    mongodb_replicaset:
+      login_user: "{{ mongodb_admin_user }}"
+      login_password: "{{ mongodb_admin_password }}"
+      login_host: "localhost"
+      login_database: "admin"
+      replica_set: "{{ mongodb_replicaset_name }}"
+      members: "mongod-node1,mongod-node2,mongod-node3"
+    register: replset
+    when: groups.mongod.index(inventory_hostname) == 0
+
+  - name: Give mongo daemon a little time to elect a PRIMARY
+    pause:
+      seconds: 30
+
   - name: Create MongoDB admin user on each node
     mongodb_user:
+      login_host: localhost
+      login_database: admin
       database: admin
       name: "{{ mongodb_admin_user }}"
       password: "{{ mongodb_admin_password }}"
       roles: ["root"]
-      state: present
     register: mongo_admin_user
     ignore_errors: yes
     failed_when:
@@ -139,13 +155,11 @@
       - "mongo_admin_user.failed == True"
       - "'not authorized on admin to execute command' not in mongo_admin_user.msg"
 
-  - debug:
-      var: mongo_admin_user
-
   - name: Append x509 and repl stuff to mongod.conf
     blockinfile:
       path: /etc/mongod.conf
       block: "{{ lookup('template', 'mongod_ssl_x509.conf.j2') }}"
+      insertafter: "^  port:"
     register: mongod_conf
 
   - name: Restart mongod
@@ -153,24 +167,6 @@
       name: mongod
       state: restarted
     when: mongod_conf.changed == True
-
-  - name: Copy RS Setup Script to lead node of each shard
-    template:
-      src: templates/rs_init.j2
-      dest: "{{ mongodb_replicaset_setup_script }}"
-    when: groups.mongod.index(inventory_hostname) == 0
-    #with_items: groups.mongod # groups['groupname'] is a hash, must use groups.groupname for a list
-
-  - name: Execute rs Setup Script on each lead node_name
-    shell: mongo admin -u {{ mongodb_admin_user }} -p {{ mongodb_admin_password }} {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
-    #shell: mongo {{ mongodb_replicaset_setup_script }} && touch ~/rs.success
-    args:
-      creates: ~/rs.success
-    register: rs
-    when: groups.mongod.index(inventory_hostname) == 0
-
-  - debug:
-      var: rs
 
   - name: Create MongoDB application users
     mongodb_user:

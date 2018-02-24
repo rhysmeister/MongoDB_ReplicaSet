@@ -1,5 +1,4 @@
 # {{ ansible_managed }}
-
 systemLog:
   destination: file
   logAppend: true
@@ -13,3 +12,10 @@ storage:
 processManagement:
   fork: true  # fork and run in background
   pidFilePath: {{ mongodb_pidFilePath }}
+
+replication:
+  replSetName: {{ mongodb_replicaset_name }}
+
+net:
+  bindIp: {{ mongodb_bindIp }}
+  port: {{ mongodb_port }}

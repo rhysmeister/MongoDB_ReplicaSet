@@ -5,7 +5,7 @@
   additional_packages: [ "python-pip" ]
   additional_python_packages: [ "pymongo" ]
   mongodb_replicaset_setup_script: "/home/vagrant/rs.js"
-  mongodb_replicaset_name: "replset"
+  mongodb_replicaset_name: "MyAnsibleModule"
   mongodb_log_path: "/var/log/mongodb/mongod.log"
   mongodb_dbPath: "/var/lib/mongo"
   mongodb_pidFilePath: /var/run/mongodb/mongod.pid

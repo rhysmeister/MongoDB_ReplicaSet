@@ -1,6 +1,4 @@
-net:
-  bindIp: {{ mongodb_bindIp }}
-  port: {{ mongodb_port }}
+
   ssl:
     mode: preferSSL
     PEMKeyFile: /etc/mongodb/ssl/{{ ansible_hostname }}.pem
@@ -9,6 +7,3 @@ net:
 security:
   authorization: enabled
   clusterAuthMode: x509
-
-replication:
-  replSetName: {{ mongodb_replicaset_name }}
