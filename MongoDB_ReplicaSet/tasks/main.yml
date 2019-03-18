@@ -2,18 +2,18 @@
 # tasks file for MongoDB_ReplicaSet
   - name: Add repository
     yum_repository:
-      name: mongodb-org-3.4
-      description: Official MongoDB 3.4 yum repo
-      baseurl: https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/3.4/x86_64/
+      name: mongodb-org-4.0
+      description: Official MongoDB 4.0 yum repo
+      baseurl: https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/4.0/x86_64/
       gpgcheck: 1
-      gpgkey: https://www.mongodb.org/static/pgp/server-3.4.asc
+      gpgkey: https://www.mongodb.org/static/pgp/server-4.0.asc
 
   - name: Install MongoDB packages on the shard servers
     yum:
       name: ["mongodb-org-server",
              "mongodb-org-shell",
              "mongodb-org-tools"]
-      enablerepo: "mongodb-org-3.4"
+      enablerepo: "mongodb-org-4.0"
       state: "installed"
 
   - name: Install additional packages
@@ -67,6 +67,7 @@
     with_items:
       - mongoCA.crt
       - mongoCA.key
+    when: ansible_hostname == 'mongod-node1'
 
   - name: Copy certificate & key to other hosts
     copy:
